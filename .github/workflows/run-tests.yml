@@ -1,0 +1,94 @@
+name: run-tests
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Suite a ejecutar: all | fast | slow'
+        required: false
+        default: 'all'
+      pytest_args:
+        description: 'Argumentos extra para pytest (p.ej. -k redondeo_comercial)'
+        required: false
+        default: '-q'
+  repository_dispatch:
+    types: [rpr-test]
+
+permissions:
+  contents: read          # minimo privilegio: el workflow solo LEE el repo
+
+concurrency:
+  group: rpr-${{ github.ref }}
+  cancel-in-progress: true   # evita gastar minutos en corridas obsoletas
+
+jobs:
+  test:
+    name: python-tests
+    runs-on: ubuntu-latest      # Linux = multiplicador 1x
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # El ref a probar lo fija el DISPATCH (campo `ref` del workflow_dispatch),
+          # no un input. Por eso el codigo ejecutado SIEMPRE coincide con la corrida.
+          ref: ${{ github.ref }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run pytest
+        id: pytest
+        shell: bash
+        continue-on-error: true      # publica el reporte aun si falla
+        env:
+          # S-4: los inputs NUNCA se interpolan en el shell. Viajan como env vars.
+          RPR_PYTEST_ARGS: ${{ inputs.pytest_args }}
+          RPR_SUITE:        ${{ inputs.suite }}
+        run: |
+          set -euo pipefail
+          case "$RPR_SUITE" in
+            fast) SELECTOR=(-m "not slow") ;;
+            slow) SELECTOR=(-m slow) ;;
+            *)    SELECTOR=() ;;
+          esac
+          # shellcheck disable=SC2086  # word-splitting intencional de los args extra
+          python -m pytest tests ${RPR_PYTEST_ARGS:+$RPR_PYTEST_ARGS} "${SELECTOR[@]}" \
+            --junitxml=report.xml --tb=short
+
+      - name: Build summary
+        if: always()
+        shell: bash
+        env:
+          # S-4: idem, sin interpolacion directa de inputs en el shell.
+          RPR_SUITE:   ${{ inputs.suite }}
+          RPR_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "# Reporte RPR"
+            echo ""
+            echo "- Commit: ${{ github.sha }}"
+            echo "- Corrida: $RPR_RUN_URL"
+            echo "- Suite: $RPR_SUITE"
+            echo "- Python: $(python --version 2>&1)"
+            echo "- Resultado: ${{ steps.pytest.outcome }}"
+          } > summary.md
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpr-report-${{ github.run_id }}
+          path: |
+            report.xml
+            summary.md
+          retention-days: 30
+          if-no-files-found: warn
