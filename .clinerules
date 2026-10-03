@@ -1,0 +1,27 @@
+# Reglas de enrutado RPR
+
+## Ejecucion remota de pruebas
+
+Este proyecto valida su codigo **en la nube de GitHub Actions**, no en la maquina local.
+
+- Si la peticion del usuario implica **ejecutar pruebas, validar codigo, correr pytest,
+  comprobar que algo funciona o revisar errores de ejecucion**, DEBES usar el skill
+  `remote-python-runner`, que dispara el workflow `run-tests.yml` via GitHub MCP.
+
+- **No** intentes ejecutar Python, pytest o Docker en el entorno local: en esta maquina
+  no hay Python instalado, y el proposito del laboratorio es demostrar que la validacion
+  remota funciona.
+
+- El resultado debe presentarse al usuario con:
+  1. `conclusion` de la corrida (`success` / `failure`)
+  2. Numero de pruebas superadas y falladas
+  3. Las fallos mas relevantes con su mensaje de asercion
+  4. Enlace a la corrida (`html_url`)
+
+- Si `conclusion == failure`, **nunca** lo reportes como exitoso: muestra el error real.
+
+## Estilo
+
+- Codigo y comentarios en espanol.
+- Los amounts monetarios se calculan con `decimal.Decimal`, nunca con `float`.
+- Toda funcion que reciba entrada del usuario valida y lanza `ValueError` con mensaje claro.
