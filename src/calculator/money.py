@@ -1,5 +1,5 @@
 """Calculo monetario con redondeo seguro."""
-from decimal import Decimal, ROUND_DOWN, InvalidOperation
+from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 
 
 def redondear(monto, decimales: int = 2) -> Decimal:
@@ -10,7 +10,7 @@ def redondear(monto, decimales: int = 2) -> Decimal:
         raise ValueError(f"Monto invalido: {monto!r}") from exc
     if not isinstance(decimales, int) or decimales < 0:
         raise ValueError("decimales debe ser un entero >= 0")
-    return valor.quantize(Decimal(1).scaleb(-decimales), rounding=ROUND_DOWN)
+    return valor.quantize(Decimal(1).scaleb(-decimales), rounding=ROUND_HALF_UP)
 
 
 def total_factura(items, tasa_impuesto: str = "0.16") -> Decimal:
