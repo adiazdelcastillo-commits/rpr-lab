@@ -23,4 +23,5 @@ def test_decimales_negativos():
 
 
 def test_total_con_impuesto():
-    assert total_factura([("a", 10.00), ("b", 5.50)]) == Decimal("18.00")
+    # 10.00 + 5.50 = 15.50;  15.50 * 0.16 = 2.48;  total = 17.98
+    assert total_factura([("a", 10.00), ("b", 5.50)]) == Decimal("17.98")
