@@ -48,13 +48,12 @@ jobs:
       - name: Run pytest
         id: pytest
         shell: bash
-        continue-on-error: true      # publica el reporte aun si falla
         env:
           # S-4: los inputs NUNCA se interpolan en el shell. Viajan como env vars.
           RPR_PYTEST_ARGS: ${{ inputs.pytest_args }}
           RPR_SUITE:        ${{ inputs.suite }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
           case "$RPR_SUITE" in
             fast) SELECTOR=(-m "not slow") ;;
             slow) SELECTOR=(-m slow) ;;
@@ -63,6 +62,9 @@ jobs:
           # shellcheck disable=SC2086  # word-splitting intencional de los args extra
           python -m pytest tests ${RPR_PYTEST_ARGS:+$RPR_PYTEST_ARGS} "${SELECTOR[@]}" \
             --junitxml=report.xml --tb=short
+          # NO se usa `set -e`: asi el paso falla si pytest falla y aun asi se
+          # publican los artefactos. Con continue-on-error la corrida terminaria
+          # en `success` aunque las pruebas fallen -> falso positivo grave.
 
       - name: Build summary
         if: always()
